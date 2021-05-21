@@ -119,7 +119,9 @@ class Evaluator():
         with torch.no_grad():
             all_predictions = []
             all_log_probs = []
+            all_labels = []
             for idx, data in enumerate(dataloader):
+                all_labels.extend[dataloader['labels'].tolist()]
                 if unpack_batch_fn:
                     inputs = unpack_batch_fn(data)
                     log_probs = model(*inputs)
@@ -134,7 +136,7 @@ class Evaluator():
                 predictions = log_probs.argmax(1)
                 all_predictions.extend(predictions.tolist())
 
-        return torch.tensor(all_log_probs), torch.tensor(all_predictions)
+        return torch.tensor(all_log_probs), torch.tensor(all_predictions), torch.tensor(all_labels)
 
     def save_predictions(self, epoch, predictions, labels):
         if torch.is_tensor(predictions):
@@ -148,13 +150,13 @@ class Evaluator():
             writer.writerows(map(list, zip(*[predictions, labels])))
 
     def after_epoch(self, epoch, model, time_taken):
-        log_probs, predictions = self.make_predictions(
+        log_probs, predictions, labels = self.make_predictions(
             model, self.valid_dataloader,
             unpack_batch_fn=self.unpack_batch_fn)
         score = self.write_epoch(
-            epoch, self.valid_labels, predictions, log_probs, time_taken)
+            epoch, labels, predictions, log_probs, time_taken)
         # self.execute_predictions()
-        self.save_predictions(epoch, predictions, self.valid_labels)
+        self.save_predictions(epoch, predictions, labels)
         if score > self.best_metric_score:
             self.best_metric_score = score
             self.save_params(model)
@@ -163,10 +165,10 @@ class Evaluator():
     def test_data(self, model, test_dataloader):
         model.eval()
         model.load_state_dict(torch.load(self.params_file))
-        log_probs, predictions = self.make_predictions(model, test_dataloader,
-                                                       unpack_batch_fn=self.unpack_batch_fn)
+        log_probs, predictions, labels = self.make_predictions(model, test_dataloader,
+                                                               unpack_batch_fn=self.unpack_batch_fn)
         accs = self.compute_all_accuracies(
-            self.test_labels, predictions, log_probs)
+            labels, predictions, log_probs)
         with open(f"{self.eval_dir}/test_predictions.csv", 'w') as f:
             writer = csv.writer(f)
             writer.writerow(accs)
