@@ -27,18 +27,18 @@ class Evaluator():
         self.unpack_batch_fn = unpack_batch_fn
         self.primary_metric = 'accuracy'
         self.best_metric_score = float('-inf')
-        self.unpack_dataloaders()
+        # self.unpack_dataloaders()
 
-    def unpack_dataloaders(self):
-        valid_labels = []
-        for (data) in self.valid_dataloader:
-            valid_labels.extend(data['labels'].tolist())
-        self.valid_labels = torch.tensor(valid_labels)
+    # def unpack_dataloaders(self):
+    #     valid_labels = []
+    #     for (data) in self.valid_dataloader:
+    #         valid_labels.extend(data['labels'].tolist())
+    #     self.valid_labels = torch.tensor(valid_labels)
 
-        test_labels = []
-        for (data) in self.test_dataloader:
-            test_labels.extend(data['labels'].tolist())
-        self.test_labels = torch.tensor(test_labels)
+    #     test_labels = []
+    #     for (data) in self.test_dataloader:
+    #         test_labels.extend(data['labels'].tolist())
+    #     self.test_labels = torch.tensor(test_labels)
 
     def setup_dirs(self):
         self.eval_dir = f"{self.root_dir}/{self.run_name}"
@@ -54,6 +54,10 @@ class Evaluator():
         # create accuracies file
         self.acc_file = f'{self.eval_dir}/accuracies.csv'
         with open(self.acc_file, 'w') as acc_file:
+            writer = csv.writer(acc_file)
+            writer.writerow(self.metrics)
+        self.test_acc_file = f'{self.eval_dir}/test_accuracies.csv'
+        with open(self.test_acc_file, 'w') as acc_file:
             writer = csv.writer(acc_file)
             writer.writerow(self.metrics)
 
@@ -99,11 +103,11 @@ class Evaluator():
         accs['hinge_loss'] = self.calc_hinge_loss(labels, inputs)
         return accs
 
-    def write_epoch(self, epoch, labels, predictions, inputs, time_taken):
+    def write_epoch(self, accuracy_file, epoch, labels, predictions, inputs, time_taken):
         row = self.compute_all_accuracies(labels, predictions, inputs)
         row['epoch'] = epoch
         row['time_taken'] = time_taken
-        with open(self.acc_file, 'a') as acc_file:
+        with open(accuracy_file, 'a') as acc_file:
             writer = csv.DictWriter(acc_file, fieldnames=self.metrics)
             writer.writerow(row)
         return row[self.primary_metric]
@@ -121,7 +125,7 @@ class Evaluator():
             all_log_probs = []
             all_labels = []
             for idx, data in enumerate(dataloader):
-                all_labels.extend[dataloader['labels'].tolist()]
+                all_labels.extend(data['labels'].tolist())
                 if unpack_batch_fn:
                     inputs = unpack_batch_fn(data)
                     log_probs = model(*inputs)
@@ -138,43 +142,49 @@ class Evaluator():
 
         return torch.tensor(all_log_probs), torch.tensor(all_predictions), torch.tensor(all_labels)
 
-    def save_predictions(self, epoch, predictions, labels):
+    def save_predictions(self, save_path, epoch, predictions, labels):
         if torch.is_tensor(predictions):
             predictions = predictions.tolist()
         if torch.is_tensor(labels):
             labels = labels.tolist()
 
-        with open(f"{self.preds_dir}/epoch_{epoch}.csv", 'w+') as pred_file:
+        fn = f"epoch_{epoch}.csv" if epoch != "test" else "test_preds.csv"
+
+        with open(f"{save_path}/{fn}", 'w+') as pred_file:
             writer = csv.writer(pred_file)
-            writer.writerow(['preditions', 'labels'])
+            writer.writerow(['predictions', 'labels'])
             writer.writerows(map(list, zip(*[predictions, labels])))
 
     def after_epoch(self, epoch, model, time_taken):
         log_probs, predictions, labels = self.make_predictions(
             model, self.valid_dataloader,
             unpack_batch_fn=self.unpack_batch_fn)
-        score = self.write_epoch(
-            epoch, labels, predictions, log_probs, time_taken)
+        score = self.write_epoch(self.acc_file, epoch,
+                                 labels, predictions, log_probs, time_taken)
         # self.execute_predictions()
-        self.save_predictions(epoch, predictions, labels)
+        self.save_predictions(self.preds_dir, epoch, predictions, labels)
         if score > self.best_metric_score:
             self.best_metric_score = score
             self.save_params(model)
         return score
 
-    def test_data(self, model, test_dataloader):
+    def test_data(self, model, test_dataloader, time_taken):
         model.eval()
         model.load_state_dict(torch.load(self.params_file))
         log_probs, predictions, labels = self.make_predictions(model, test_dataloader,
                                                                unpack_batch_fn=self.unpack_batch_fn)
+        self.save_predictions(self.preds_dir, "test", predictions, labels)
         accs = self.compute_all_accuracies(
             labels, predictions, log_probs)
-        with open(f"{self.eval_dir}/test_predictions.csv", 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(accs)
+        # print("accs from test data", accs)
+        self.write_epoch(self.test_acc_file, "test_results",
+                         labels, predictions, log_probs, time_taken)
+        # with open(f"{self.eval_dir}/test_predictions.csv", 'w') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow(accs)
 
-    def after_all(self, model):
-        self.test_data(model, self.test_dataloader)
+    def after_all(self, model, time_taken):
+        self.test_data(model, self.test_dataloader, time_taken)
         # any plotting functions will go here
 #
     # def save_to_s3(self, bucket):

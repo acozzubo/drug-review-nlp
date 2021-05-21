@@ -28,12 +28,16 @@ class Trainer():
 
     def train(self, model, evaluator, num_epochs, log_interval):
 
+        total_time_taken = 0
         for epoch in range(num_epochs):
             epoch_start_time = time.time()
-            time_taken = self.train_an_epoch(model, log_interval)
+            self.train_an_epoch(model, log_interval)
             time_taken = time.time() - epoch_start_time
+            total_time_taken += time_taken
             with torch.no_grad():
                 metric = evaluator.after_epoch(
                     epoch, model, time_taken)
             print(
                 f'Epoch: {epoch}, time taken: {time_taken:.1f}s, validation accuracy: {metric:.3f}.')
+
+        return total_time_taken

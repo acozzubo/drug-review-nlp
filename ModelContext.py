@@ -11,9 +11,9 @@ class ModelContext():
 
     def run(self, num_epochs, log_interval):
         self.evaluator.setup_dirs()
-        self.trainer.train(self.model, self.evaluator,
-                           num_epochs, log_interval)
-        self.evaluator.after_all(self.model)
+        time_taken = self.trainer.train(self.model, self.evaluator,
+                                        num_epochs, log_interval)
+        self.evaluator.after_all(self.model, time_taken)
 
     def make_plots(self, directory):
         # TODO

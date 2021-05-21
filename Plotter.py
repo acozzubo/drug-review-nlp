@@ -1,36 +1,111 @@
 import altair as alt
 import pandas as pd
 import csv
+import os
+import shutil
 
 
 class Plotter():
     def __init__(self, results_dir):
         self.results_dir = results_dir
+        self.plots_dir = f"{self.results_dir}/plots"
+        try:
+            os.mkdir(self.plots_dir)
+        except FileExistsError as e:
+            print(f"Directory {self.plots_dir} already exists...")
+
+    def plot_accuracy_lines(self):
+        # get data
+
+        preds_dir = f"{self.results_dir}/preds/"
+        files = [f for f in os.listdir(preds_dir) if 'test' not in f]
+
+        epoch_dict = {}
+        max_epoch = -1
+        for file in files:
+            print("file", file)
+            with open(f"{preds_dir}/{file}", 'r') as f:
+                data = list(csv.reader(f))
+            data = list(zip(*data))
+            data = {c[0]: list(map(float, c[1:])) for c in data}
+
+            correct = {0: 0, 1: 0, 2: 0}
+            total = {0: 0, 1: 0, 2: 0}
+            for p, l in zip(data['predictions'], data['labels']):
+                total[l] += 1
+                # print("p, l", p, l)
+                if p == l:
+                    correct[l] += 1
+
+            accs = {
+                'negative': correct[0] / total[0],
+                'neutral': correct[1] / total[1],
+                'positive': correct[2] / total[2]
+            }
+
+            epoch_num = int(file[6])  # files have standardized names
+            if epoch_num > max_epoch:
+                max_epoch = epoch_num
+            epoch_dict[epoch_num] = accs
+
+        data = {}
+        print("max epoch", max_epoch)
+        for label in ('positive', 'negative', 'neutral'):
+            col = [0] * (max_epoch + 1)
+            for k, v in epoch_dict.items():
+                print(k)
+                col[k] = v[label]
+            data[label] = col
+
+        print("data", data)
+
+        # produce chart
+        chart = accuracy_lines(data)
+
+        # save chart
+        chart.save(f"{self.plots_dir}/accuracy_lines.html")
 
     def plot_lines(self, metrics):
         """
         metrics: list of metrics
         """
-        pass
         # get data
         with open(f'{self.results_dir}/accuracies.csv', 'r') as f:
             valid_data = list(csv.reader(f))
 
         valid_data = list(zip(*valid_data))
-        print("valid_data", valid_data)
+        # print("valid_data", valid_data)
         valid_cols = {c[0]: list(map(float, c[1:])) for c in valid_data}
         # print("valid_cols", valid_cols)
 
         inputs = {k: v for k, v in valid_cols.items()
                   if k in metrics}
-        print("inputs", inputs)
+        # print("inputs", inputs)
 
         # produce charts
         chart = training_lines(valid_accuracies=inputs,
                                title="Validation Accuracies")
 
         # save charts
-        chart.save('test.html')
+        chart.save(f"{self.plots_dir}/training_lines.html")
+
+    def make_confusion_matrix(self):
+        # get data
+        with open(f'{self.results_dir}/preds/test_preds.csv') as f:
+            data = list(csv.reader(f))
+
+        data = list(zip(*data))
+        data_cols = {c[0]: list(map(float, c[1:])) for c in data}
+        print(data_cols.keys())
+        preds = data_cols['predictions']
+        labels = data_cols['labels']
+
+        # produce chart
+        chart = confusion_matrix(
+            preds, labels, title="Accuracies Confusion Matrix")
+
+        # save chart
+        chart.save(f"{self.plots_dir}/confusion_matrix.html")
 
 
 def training_lines(title="", train_accuracies={}, valid_accuracies={}, test_accuracies={}):
@@ -57,8 +132,8 @@ def training_lines(title="", train_accuracies={}, valid_accuracies={}, test_accu
         cols["epoch"].extend(i+1 for i in range(n))
         cols["metric_name"].extend(["valid_" + metric]*n)
 
-    print(cols["value"][0])
-    print(type(cols["value"][0]))
+    # print(cols["value"][0])
+    # print(type(cols["value"][0]))
     df = pd.DataFrame(cols)
 
     # test
@@ -71,7 +146,7 @@ def training_lines(title="", train_accuracies={}, valid_accuracies={}, test_accu
 
     test_df = pd.DataFrame(test_cols)
 
-    print(df['value'].dtype)
+    # print(df['value'].dtype)
 
     min_y_axis = df['value'].min() - 0.1
 
@@ -121,10 +196,39 @@ def confusion_matrix(predicted, actual, title=""):
         title={'text': title})
 
 
-if __name__ == "__main__":
+def accuracy_lines(data, title=""):
+    '''
+    data is indexable with 3 columns: positive, neutral, negative
+    the values are lists os numbers
+    '''
+    # print("data", data)
+    cols = {"accuracy": [], "epoch": [], "label": []}
 
-    plotter = Plotter("./test_results/lstm_small_results")
-    plotter.plot_lines(['accuracy', 'cohens_kappa'])
+    # reshape data
+    for label, values in data.items():
+        n = len(values)
+        cols["accuracy"].extend(values)
+        cols["epoch"].extend(i+1 for i in range(n))
+        cols["label"].extend([label]*n)
+    df = pd.DataFrame(cols)
+    # print(df)
+    # print(df['value'])
+    # print(df['value'].dtype)
+
+    min_y_axis = df['accuracy'].min() - 0.1
+
+    line_chart = alt.Chart(df).mark_line(point=True).encode(
+        x=alt.X("epoch:Q", axis=alt.Axis(tickMinStep=1)),
+        y=alt.Y("accuracy", scale=alt.Scale(domain=[min_y_axis, 1])),
+        color='label')
+
+    return (line_chart).properties(
+        title={'text': "Accuracy by Class over Epochs"})
+
+# if __name__ == "__main__":
+
+#     plotter = Plotter("./test_results/lstm_small_results")
+#     plotter.plot_lines(['accuracy', 'cohens_kappa'])
 
 
 #     train = {"cohens_kappa": [.2, .6, .1, .4, .5],
