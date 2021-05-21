@@ -5,7 +5,10 @@ import datetime
 import torch
 from sklearn.metrics import cohen_kappa_score, accuracy_score, balanced_accuracy_score, confusion_matrix
 from torch.nn.functional import log_softmax, cross_entropy, hinge_embedding_loss
-import boto3
+try:
+    import boto3
+except Exception as e:
+    print(e)
 
 
 class Evaluator():

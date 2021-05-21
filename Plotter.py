@@ -14,6 +14,11 @@ class Plotter():
         except FileExistsError as e:
             print(f"Directory {self.plots_dir} already exists...")
 
+    def run_all(self):
+        self.plot_accuracy_lines()
+        self.make_confusion_matrix()
+        self.plot_lines(['cohens_kappa', 'accuracy'])
+
     def plot_accuracy_lines(self):
         # get data
 
@@ -49,18 +54,18 @@ class Plotter():
             epoch_dict[epoch_num] = accs
 
         data = {}
-        print("max epoch", max_epoch)
+        # print("max epoch", max_epoch)
         for label in ('positive', 'negative', 'neutral'):
             col = [0] * (max_epoch + 1)
             for k, v in epoch_dict.items():
-                print(k)
+                # print(k)
                 col[k] = v[label]
             data[label] = col
 
         print("data", data)
 
         # produce chart
-        chart = accuracy_lines(data)
+        # chart = accuracy_lines(data)
 
         # save chart
         chart.save(f"{self.plots_dir}/accuracy_lines.html")

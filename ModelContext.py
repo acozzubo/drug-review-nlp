@@ -10,9 +10,17 @@ class ModelContext():
         self.model = model
 
     def run(self, num_epochs, log_interval):
+        # setup
         self.evaluator.setup_dirs()
+
+        # train
         time_taken = self.trainer.train(self.model, self.evaluator,
                                         num_epochs, log_interval)
+
+        # load best model
+        self.model.load_state_dict(torch.load(self.evaluator.params_file))
+
+        # eval
         self.evaluator.after_all(self.model, time_taken)
 
     def make_plots(self, directory):
