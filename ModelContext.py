@@ -1,12 +1,16 @@
-import boto3
+try:
+    import boto3
+except Exception as e:
+    print(e)
 import torch
 import os
 
 
 class ModelContext():
-    def __init__(self, model, trainer, evaluator):
+    def __init__(self, model, trainer, evaluator, plotter):
         self.trainer = trainer
         self.evaluator = evaluator
+        self.plotter = plotter
         self.model = model
 
     def run(self, num_epochs, log_interval):
@@ -22,6 +26,9 @@ class ModelContext():
 
         # eval
         self.evaluator.after_all(self.model, time_taken)
+
+        # plots
+        self.plotter.run_all()
 
     def make_plots(self, directory):
         # TODO
