@@ -7,201 +7,15 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
 
-def load_df(path, index_col=None):
-    """
-    path is the string path to the dataset
-    returns pandas df
-    """
-    file_type = path[-3:]
-    delim = '\t' if file_type == 'tsv' else ','
-    df = pd.read_csv(path, header=0, delimiter=delim,
-                     index_col=index_col, parse_dates=['date'])
-    return df
-
-
-def replace_html_apostrophes(s):
-    new_s = s.lower()
-    new_s = new_s.replace("&#039;", "'")
-    contraction_dict = {"ain't": "is not", "isn't": "is not", "we're": "were",
-                        "weren't": "were not", "aren't": "are not", "can't": "cannot",
-                        "wasn't": "was not", "won't": "will not", "don't": "do not",
-                        "shouldn't": "should not", "doesn't": "does not", "you're": "you are",
-                        "'cause": "because", "could've": "could have", "i'm": "i am",
-                        "i've": "i have", "would've": "would have", "haven't": "have not"}
-    for k, v in contraction_dict.items():
-        new_s = new_s.replace(k, v)
-    return new_s
-
-
-def clean_numbers(s):
-    if bool(re.search(r'\d', s)):
-        s = re.sub('[0-9]{5}', '#####', s)
-        s = re.sub('[0-9]{4}', '####', s)
-        s = re.sub('[0-9]{3}', '###', s)
-        s = re.sub('[0-9]{2}', '##', s)
-    return s
-
-
-def clean_string(s):
-    new_s = replace_html_apostrophes(s)
-    new_s = clean_numbers(new_s)
-    return new_s
-
-
-def clean_data(df):
-    """
-    takes pandas df
-    returns pandas df
-    """
-
-    # do string cleaning steps for review
-    df['review'] = df.apply(lambda row: clean_string(row['review']), axis=1)
-
-    # code NAs as a "Not Entered" category
-    df.loc[df['condition'].isna(), 'condition'] = 'Not Entered'
-
-    # creates ratings category by binning ratings
-    df['rating_category'] = 'Postive'
-    df.loc[df['rating'] < 7, 'rating_category'] = 'Neutral'
-    df.loc[df['rating'] < 4, 'rating_category'] = 'Negative'
-
-    # create daily useful count
-    max_date = df['date'].max()
-    df['useful_daily'] = df['usefulCount'] / \
-        ((max_date - df['date']).dt.days + 1)
-
-    return df
-
-
-def make_cleanish_df(tsv_filepath, output_path):
-    """
-    paths include filenames
-    """
-    df = load_df(tsv_filepath, index_col=0)
-    df = clean_data(df)
-    df.to_csv(output_path, index=False)
-
-
 class DrugReviewDataset(Dataset):
     def __init__(self, csv_file, x_colname, target_colname, tokenizer=None):
-        """
-        the following are assumed about csv_file:
-            - headers are in first row
-            - there is a column called 'date'
-            - there is a column called 'review' which contains the text data
-        """
-        self.x = []
-        self.target = []
-        with open(csv_file, 'r') as f:
-            data = list(reader(f))
+        """[summary]
 
-        target_colnum = data[0].index(target_colname)
-        x_colnum = data[0].index(x_colname)
-        for row in data[1:]:
-            self.target.append(row[target_colnum])
-
-            if tokenizer:
-                self.x.append(tokenizer(row[x_colnum]))
-            else:
-                self.x.append(row[x_colnum])
-
-    def __len__(self):
-        return len(self.x)
-
-    def __getitem__(self, idx):
-        """
-        idx can be a list or tensor if integers
-        """
-        example = (self.target[idx], self.x[idx])
-
-        return example
-
-
-# import pandas as pd
-
-
-def load_df(path, index_col=None):
-    """
-    path is the string path to the dataset
-    returns pandas df
-    """
-    file_type = path[-3:]
-    delim = '\t' if file_type == 'tsv' else ','
-    df = pd.read_csv(path, header=0, delimiter=delim,
-                     index_col=index_col, parse_dates=['date'])
-    return df
-
-
-def replace_html_apostrophes(s):
-    new_s = s.lower()
-    new_s = new_s.replace("&#039;", "'")
-    contraction_dict = {"ain't": "is not", "isn't": "is not", "we're": "were",
-                        "weren't": "were not", "aren't": "are not", "can't": "cannot",
-                        "wasn't": "was not", "won't": "will not", "don't": "do not",
-                        "shouldn't": "should not", "doesn't": "does not", "you're": "you are",
-                        "'cause": "because", "could've": "could have", "i'm": "i am",
-                        "i've": "i have", "would've": "would have", "haven't": "have not"}
-    for k, v in contraction_dict.items():
-        new_s = new_s.replace(k, v)
-    return new_s
-
-
-def clean_numbers(s):
-    if bool(re.search(r'\d', s)):
-        s = re.sub('[0-9]{5}', '#####', s)
-        s = re.sub('[0-9]{4}', '####', s)
-        s = re.sub('[0-9]{3}', '###', s)
-        s = re.sub('[0-9]{2}', '##', s)
-    return s
-
-
-def clean_string(s):
-    new_s = replace_html_apostrophes(s)
-    new_s = clean_numbers(new_s)
-    return new_s
-
-
-def clean_data(df):
-    """
-    takes pandas df
-    returns pandas df
-    """
-
-    # do string cleaning steps for review
-    df['review'] = df.apply(lambda row: clean_string(row['review']), axis=1)
-
-    # code NAs as a "Not Entered" category
-    df.loc[df['condition'].isna(), 'condition'] = 'Not Entered'
-
-    # creates ratings category by binning ratings
-    df['rating_category'] = 'Postive'
-    df.loc[df['rating'] < 7, 'rating_category'] = 'Neutral'
-    df.loc[df['rating'] < 4, 'rating_category'] = 'Negative'
-
-    # create daily useful count
-    max_date = df['date'].max()
-    df['useful_daily'] = df['usefulCount'] / \
-        ((max_date - df['date']).dt.days + 1)
-
-    return df
-
-
-def make_cleanish_df(tsv_filepath, output_path):
-    """
-    paths include filenames
-    """
-    df = load_df(tsv_filepath, index_col=0)
-    df = clean_data(df)
-    df.to_csv(output_path, index=False)
-
-
-class DrugReviewDataset(Dataset):
-    def __init__(self, csv_file, x_colname, target_colname, tokenizer=None):
-        """
-        the following are assumed about csv_file:
-            - headers are in first row
-            - there is a column called 'date'
-            - there is a column called 'review' which contains the text data
+        Args:
+            csv_file ([str]): csv file with x_colname and target_colname in first row
+            x_colname ([str]): colname of review column
+            target_colname ([str]): colname of target column
+            tokenizer ([tokenizer object], optional): possibly returned by pytorch's get_tokenizer
         """
         self.x = []
         self.target = []
@@ -232,9 +46,11 @@ class DrugReviewDataset(Dataset):
 
 class DrugReviewDatasetPlus(Dataset):
     """
-    tokens is assumed to be in the dataset as the main X column
-    it's expected to be a stringified list of tokens
+    This is the dataset object that's actually used.
+    It's built such that in can handle an arbitrary number of additional features
+    The features are returned as a dictionary
     """
+
     DEFAULT_OPTIONAL_COLS = (["pos_encoding", "dep_encoding",
                               "shape_encoding", "lemmas"])
     DEFAULT_ENCODING_COLS = ({'pos_encoding': 'pos_encoding_count',
@@ -245,12 +61,19 @@ class DrugReviewDatasetPlus(Dataset):
                  optional_cols=DEFAULT_OPTIONAL_COLS,
                  encoding_cols=DEFAULT_ENCODING_COLS,
                  s3_bucket=None):
-        """
-        the following are assumed about csv_file:
-            - headers are in first row
-            - there is a column called 'review' which contains the text data
-            - there are many optional columns as well
-            - optional cols is a list of cols to also keep in X
+        """[summary]
+
+        Args:
+            csv_file (str): target_col, optional cols, and encoding cols must all be in the first
+                row of csv file
+            target_colnum (str, optional): [description]. Defaults to 'rating_category'.
+            optional_cols (list of strs, optional): lists optional columns
+            encoding_cols (dict{str: str}, optional): for columns that will be turned into one-hot encodings
+                previously these needed to map the column names to the columns containing the length of the
+                encoding.  However, since that logic has been moved to the collate function this is no longer
+                necessary
+            s3_bucket (str, optional): artifact of when we naively setup everything to run on amazon
+                little did we know it was a huge waste of time
         """
         self.target = []
         self.X = []
@@ -318,6 +141,9 @@ class DrugReviewDatasetPlus(Dataset):
                     row = {}
                     for col, idx in colnums.items():
                         row[col] = line[idx]
+                        # one hot encodings used to be made here but it required too much memory so
+                        # logic was moved to the collate function
+
                         # make one-hot encodings if necessary
                         # if col in self.encodings:
                         #     if i == 0:
@@ -358,12 +184,25 @@ class DrugReviewDatasetPlus(Dataset):
 def get_dataloader(data_file, batch_size, shuffle, collate=None,
                    optional_cols=[], encoding_cols={}):
     """
-    datafile: path to input file (should be a csv)
-    batch_size: (int) parameter for DataLoader class
-    shuffle: (bool) parameter for DataLoader class
-    collage: (fn) parameter for DataLoader class
-    split: (bool) specifies if there is to be a train-validation split on data
+    Builds dataloader object
+
+    Args:
+        data_file (str): path to input file (should be a csv created by pre-processing notebook)
+        batch_size (int): [description]
+        shuffle (bool): [description]
+        collate (fn, optional): collate function from collate.py. if you're using any encoding columns
+        use collate_rnn_plus.  otherwise collate_rnn should be fine.  Defaults to None.
+        optional_cols (list of strs, optional): lists optional columns
+        encoding_cols (dict{str: str}, optional): for columns that will be turned into one-hot encodings
+            previously these needed to map the column names to the columns containing the length of the
+            encoding.  However, since that logic has been moved to the collate function this is no longer
+            necessary
+
+
+    Returns:
+        DataLoader: iternator that will return data in a dict from with keys (labels, reviews, etc)
     """
+
     print("get dataloader called")
 
     ds = DrugReviewDatasetPlus(
@@ -372,23 +211,3 @@ def get_dataloader(data_file, batch_size, shuffle, collate=None,
                             shuffle=shuffle, collate_fn=collate)
 
     return dataloader
-
-
-def save_dataset(dataloader, filepath):
-    data = {x: dataloader.dataset.x,
-            target: dataloader.dataset.target}
-    with open(filepath, 'w') as f:
-        s = json.dumps(data)
-        f.write(s)
-
-
-# if __name__ == '__main__':
-
-#     # ds = DrugReviewDataset('/home/nselman/ml/drugproject/tiny_train.csv', 'review', 'rating_category')
-#     # print(ds[3])
-
-#     dl = get_dataloader('/home/nselman/ml/drugproject/tiny_train.csv', 'rating_category', 5, True)
-#     for i, (tar, rev) in enumerate(dl):
-#         print(tar, rev)
-#         if i == 3:
-#             break

@@ -2,15 +2,28 @@ import altair as alt
 import pandas as pd
 import csv
 import os
-import shutil
 
 
 class Plotter():
+    """
+    Can crawl through directory created by evaluator and create charts
+    """
+
     def __init__(self, results_dir):
+        """
+        Constructor for results dir
+
+        Args:
+            results_dir (str): directory where results are stored (this will
+            bet the same directory that an evaluator object created)
+        """
         self.results_dir = results_dir
         self.plots_dir = f"{self.results_dir}/plots"
 
     def setup_dir(self):
+        """
+        creates directory for plots
+        """
         try:
             print("making plots dir...", self.plots_dir)
             os.mkdir(self.plots_dir)
@@ -18,12 +31,18 @@ class Plotter():
             print(f"Directory {self.plots_dir} already exists...")
 
     def run_all(self):
+        """
+        create directory and all plots
+        """
         self.setup_dir()
         self.plot_accuracy_lines()
         self.make_confusion_matrix()
         self.plot_lines(['cohens_kappa', 'accuracy'])
 
     def plot_accuracy_lines(self):
+        """
+        create and save plots of accuracies across epochs
+        """
 
         # get data
 
@@ -74,6 +93,9 @@ class Plotter():
 
     def plot_lines(self, metrics):
         """
+        creates line plot of metrics across epochs for training and valid
+        datasets.  also plots line representing test data
+
         metrics: list of metrics
         """
         # get data
@@ -119,6 +141,10 @@ class Plotter():
         chart.save(f"{self.plots_dir}/training_lines.html")
 
     def make_confusion_matrix(self):
+        """
+        creates confusion matrix in which cells are normalized by row total
+        (which corresponds to total number examples with the label on the y axis)
+        """
         # get data
         with open(f'{self.results_dir}/preds/test_preds.csv') as f:
             data = list(csv.reader(f))
@@ -191,6 +217,17 @@ def training_lines(title="", train_accuracies={}, valid_accuracies={}, test_accu
 
 
 def confusion_matrix(predicted, actual, title=""):
+    """
+    creates confusion matrix
+
+    Args:
+        predicted (list): list of predicted values
+        actual (list): list of actual values
+        title (str, optional)
+
+    Returns:
+        chart
+    """
     df = pd.DataFrame({"predicted": predicted, "actual": actual})
     df_cells = df.groupby(["predicted", "actual"]
                           ).size().reset_index(name='count')
@@ -246,22 +283,3 @@ def accuracy_lines(data, title=""):
 
     return (line_chart).properties(
         title={'text': "Accuracy by Class over Epochs"})
-
-# if __name__ == "__main__":
-
-#     plotter = Plotter("./test_results/lstm_small_results")
-#     plotter.plot_lines(['accuracy', 'cohens_kappa'])
-
-
-#     train = {"cohens_kappa": [.2, .6, .1, .4, .5],
-#              "accuracy": [.2, .3, .5, .6, .8],
-#              "balanced_accuracy": [.1, .4, .2, .1, .8]}
-#     valid = {"cohens_kappa": [.3, .5, .2, .4, .7],
-#              "accuracy": [.2, .4, .6, .6, .7],
-#              "balanced_accuracy": [.2, .4, .5, .6, .9]}
-#     test = {"cohens_kappa": .5,
-#             "accuracy": .6,
-#             "balanced_accuracy": .7}
-
-#     training_lines(train_accuracies=train,
-#                    valid_accuracies=valid, test_accuracies=test)

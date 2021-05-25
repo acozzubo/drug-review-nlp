@@ -1,11 +1,20 @@
+import json
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
 
 def make_collate_rnn(vocab, device='cpu'):
     """
-    device is torch.device object with argument 'cpu' or 'cuda'
-    pretty much just tokenizes, replaces with indices, and pads
+    builds collate function for recurrent layers
+    requires padding sequences such that all examples become equal
+    in length to the longest in the batch
+
+    Args:
+        vocab (vocab object): can map tokens to indexes
+        device (str, optional): cuda or cpu
+
+    Returns:
+        fn: collate function that takes batches
     """
 
     SENTIMENT_CATEGORIES = {
@@ -40,8 +49,18 @@ def make_collate_rnn(vocab, device='cpu'):
 
 def make_collate_rnn_lemmas(vocab, device='cpu'):
     """
-    device is torch.device object with argument 'cpu' or 'cuda'
-    pretty much just tokenizes, replaces with indices, and pads
+    builds collate function for recurrent layers
+    requires padding sequences such that all examples become equal
+    in length to the longest in the batch
+    uses lemmas instead of tokens
+    this could be refactored and combined with the previous function
+
+    Args:
+        vocab (vocab object): can map tokens to indexes
+        device (str, optional): cuda or cpu
+
+    Returns:
+        fn: collate function that takes batches
     """
 
     SENTIMENT_CATEGORIES = {
@@ -76,8 +95,20 @@ def make_collate_rnn_lemmas(vocab, device='cpu'):
 
 def make_collate_plus(device='cpu', vocab={}, encoded_cols=[], encoding_lengths={}):
     """
-    device is torch.device object with argument 'cpu' or 'cuda'
-    pretty much just tokenizes, replaces with indices, and pads
+    builds collate function for recurrent layers
+    requires padding sequences such that all examples become equal
+    in length to the longest in the batch
+
+    Args:
+        vocab (vocab object): can map tokens to indexes
+        device (str, optional): cuda or cpu
+        encoded_cols (list of str, optional): list of key names that must be turned into
+            one-hot encodings
+        encoding_lengths: (dict {encoding_cols: int}): maps encoding_cols to length of the
+            one-hot vector
+
+    Returns:
+        fn: collate function that takes batches
     """
     SENTIMENT_CATEGORIES = {
         "Negative": 0,
