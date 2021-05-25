@@ -317,21 +317,26 @@ class DrugReviewDatasetPlus(Dataset):
                 try:
                     row = {}
                     for col, idx in colnums.items():
+                        row[col] = line[idx]
                         # make one-hot encodings if necessary
-                        if col in self.encodings:
-                            if i == 0:
-                                self.encodings[col] = int(line[idx]) + 1
-                                # idx = self.encodings[col]
-                            one_hots = []
-                            for token in json.loads(line[idx]):
-                                one_hot = [0] * self.encodings[col]
-                                one_hot[token] = 1
-                                one_hots.append(json.dumps(one_hot))
+                        # if col in self.encodings:
+                        #     if i == 0:
+                        #         # print("col encoding", col)
+                        #         # print("idx", idx)
+                        #         # print("line", line[self.encodings[col]])
+                        #         self.encodings[col] = int(
+                        #             line[self.encodings[col]]) + 1
+                        #         # idx = self.encodings[col]
+                        #     one_hots = []
+                        #     for token in json.loads(line[idx]):
+                        #         one_hot = [0] * self.encodings[col]
+                        #         one_hot[token] = 1
+                        #         one_hots.append(json.dumps(one_hot))
 
-                            row[col] = one_hots
+                        #     row[col] = one_hots
 
-                        else:
-                            row[col] = line[idx]
+                        # else:
+                        #     row[col] = line[idx]
                 except IndexError:
                     print(f"not enough columns in {i+1} row of csv")
                     raise
@@ -375,159 +380,6 @@ def save_dataset(dataloader, filepath):
     with open(filepath, 'w') as f:
         s = json.dumps(data)
         f.write(s)
-
-
-# if __name__ == '__main__':
-
-#     # ds = DrugReviewDataset('/home/nselman/ml/drugproject/tiny_train.csv', 'review', 'rating_category')
-#     # print(ds[3])
-
-#     dl = get_dataloader('/home/nselman/ml/drugproject/tiny_train.csv', 'rating_category', 5, True)
-#     for i, (tar, rev) in enumerate(dl):
-#         print(tar, rev)
-#         if i == 3:
-#             break
-
-
-# class DrugReviewDatasetPlus(Dataset):
-#     """
-#     tokens is assumed to be in the dataset as the main X column
-#     it's expected to be a stringified list of tokens
-#     """
-#     DEFAULT_OPTIONAL_COLS = (["pos_encoding", "dep_encoding",
-#                               "shape_encoding", "lemmas"])
-#     DEFAULT_ENCODING_COLS = ({'pos_encoding': 'pos_encoding_count',
-#                               'dep_encoding': 'dep_encoding_count',
-#                               'shape_encoding': 'shape_encoding_count'})
-
-#     def __init__(self, csv_file, target_colnum='rating_category',
-#                  optional_cols=DEFAULT_OPTIONAL_COLS,
-#                  encoding_cols=DEFAULT_ENCODING_COLS,
-#                  s3_bucket=None):
-#         """
-#         the following are assumed about csv_file:
-#             - headers are in first row
-#             - there is a column called 'review' which contains the text data
-#             - there are many optional columns as well
-#             - optional cols is a list of cols to also keep in X
-#         """
-#         self.target = []
-#         self.X = []
-#         self.encodings = {}
-#         self.feature_names = optional_cols + ['tokens']
-
-#         if s3_bucket:
-#             response = s3_client.get_object(Bucket=bucket, Key=csv_file)
-#             data = json.loads(response['Body'])
-
-#         with open(csv_file, 'rb') as f:
-#             print(f"reading file {csv_file}")
-#             data = list(reader(f))
-
-#             # required cols
-#         try:
-#             target_colnum = data[0].index(target_colnum)
-#             review_colnum = data[0].index('tokens')
-#         except ValueError:
-#             print("target_colnum and review must be in the first row of the csv")
-#             raise
-
-#         # additional possible cols
-#         colnums = {}
-#         for col in self.feature_names:
-#             try:
-#                 colnums[col] = data[0].index(col)
-#             except ValueError:
-#                 print(f"{col} was not found in the first row of your csv," +
-#                       "make sure that each element in optional_cols and" +
-#                       "encoding_cols, including the defaults, can be found " +
-#                       "in the first row of your csv.")
-#                 raise
-
-#         # get encoding colnums
-#         encoding_colnums = {}
-#         for encoding_col, count_col in encoding_cols.items():
-#             try:
-#                 idx = data[0].index(count_col)
-#             except ValueError:
-#                 print(f"{col} was not found in the first row of your csv," +
-#                       "make sure that each element in optional_cols and" +
-#                       "encoding_cols, including the defaults, can be found " +
-#                       "in the first row of your csv.")
-#                 raise
-
-#             # also get numbers from this loop since they're row invarient
-#             self.encodings[encoding_col] = int(data[1][idx]) + 1
-
-#         # get data rows
-#         for i, line in enumerate(data[1:]):
-#             if not i % 100:
-#                 print(f"loading line {i}")
-#             # features
-#             try:
-#                 self.target.append(line[target_colnum])
-#             except IndexError:
-#                 print(f"not enough columns in {i+1} row of csv. skipping...")
-#                 continue
-
-#             try:
-#                 row = {}
-#                 for col, idx in colnums.items():
-#                     # make one-hot encodings if necessary
-#                     if col in self.encodings:
-#                         one_hots = []
-#                         for token in json.loads(line[idx]):
-#                             one_hot = [0] * self.encodings[col]
-#                             one_hot[token] = 1
-#                             one_hots.append(json.dumps(one_hot))
-
-#                         row[col] = one_hots
-
-#                     else:
-#                         row[col] = line[idx]
-#             except IndexError:
-#                 print(f"not enough columns in {i+1} row of csv")
-#                 raise
-
-#             self.X.append(row)
-
-#     def __len__(self):
-#         return len(self.X)
-
-#     def __getitem__(self, idx):
-#         """
-#         idx can be a list or tensor if integers
-#         """
-#         example = (self.target[idx], self.X[idx])
-
-#         return example
-
-
-# def get_dataloader(data_file, batch_size, shuffle, collate=None,
-#                    optional_cols=[], encoding_cols={}):
-#     """
-#     datafile: path to input file (should be a csv)
-#     batch_size: (int) parameter for DataLoader class
-#     shuffle: (bool) parameter for DataLoader class
-#     collage: (fn) parameter for DataLoader class
-#     split: (bool) specifies if there is to be a train-validation split on data
-#     """
-#     print("get dataloader called")
-
-#     ds = DrugReviewDatasetPlus(
-#         data_file, optional_cols=optional_cols, encoding_cols=encoding_cols)
-#     dataloader = DataLoader(ds, batch_size=batch_size,
-#                             shuffle=shuffle, collate_fn=collate)
-
-#     return dataloader
-
-
-# def save_dataset(dataloader, filepath):
-#     data = {x: dataloader.dataset.x,
-#             target: dataloader.dataset.target}
-#     with open(filepath, 'w') as f:
-#         s = json.dumps(data)
-#         f.write(s)
 
 
 # if __name__ == '__main__':

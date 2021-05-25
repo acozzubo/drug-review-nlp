@@ -16,17 +16,14 @@ class Evaluator():
     Creates files relating to evaluation of models during and after training
     """
 
-    def __init__(self, valid_dataloader, test_dataloader,
-                 root_dir='./', run_name=None, unpack_batch_fn=None):
+    def __init__(self, *, root_dir='./', run_name=None, unpack_batch_fn=None):
         self.root_dir = root_dir
         if run_name:
             self.run_name = run_name
         else:
             self.run_name = "run_" + str(datetime.today())
-        self.metrics = ['epoch', 'time_taken', 'accuracy',
+        self.metrics = ['epoch', 'time_taken', 'split', 'accuracy',
                         'balanced_accuracy', 'cohens_kappa', 'cross_entropy', 'hinge_loss']
-        self.valid_dataloader = valid_dataloader
-        self.test_dataloader = test_dataloader
         self.unpack_batch_fn = unpack_batch_fn
         self.primary_metric = 'accuracy'
         self.best_metric_score = float('-inf')
@@ -106,10 +103,15 @@ class Evaluator():
         accs['hinge_loss'] = self.calc_hinge_loss(labels, inputs)
         return accs
 
-    def write_epoch(self, accuracy_file, epoch, labels, predictions, inputs, time_taken):
+    def write_epoch(self, *, accuracy_file, epoch, labels, predictions, inputs, time_taken, split):
+        """
+        split is one of 'train', 'valid'
+        """
+
         row = self.compute_all_accuracies(labels, predictions, inputs)
         row['epoch'] = epoch
         row['time_taken'] = time_taken
+        row['split'] = split
         with open(accuracy_file, 'a') as acc_file:
             writer = csv.DictWriter(acc_file, fieldnames=self.metrics)
             writer.writerow(row)
@@ -158,12 +160,19 @@ class Evaluator():
             writer.writerow(['predictions', 'labels'])
             writer.writerows(map(list, zip(*[predictions, labels])))
 
-    def after_epoch(self, epoch, model, time_taken):
+    def after_epoch(self, *, epoch, model, time_taken, valid_dataloader, train_dataloader):
+        # train results
         log_probs, predictions, labels = self.make_predictions(
-            model, self.valid_dataloader,
+            model, train_dataloader,
             unpack_batch_fn=self.unpack_batch_fn)
-        score = self.write_epoch(self.acc_file, epoch,
-                                 labels, predictions, log_probs, time_taken)
+        score = self.write_epoch(accuracy_file=self.acc_file, epoch=epoch, labels=labels,
+                                 predictions=predictions, inputs=log_probs, time_taken=time_taken, split='train')
+        # validation results
+        log_probs, predictions, labels = self.make_predictions(
+            model, valid_dataloader,
+            unpack_batch_fn=self.unpack_batch_fn)
+        score = self.write_epoch(accuracy_file=self.acc_file, epoch=epoch, labels=labels,
+                                 predictions=predictions, inputs=log_probs, time_taken=time_taken, split='valid')
         # self.execute_predictions()
         self.save_predictions(self.preds_dir, epoch, predictions, labels)
         if score > self.best_metric_score:
@@ -171,7 +180,7 @@ class Evaluator():
             self.save_params(model)
         return score
 
-    def test_data(self, model, test_dataloader, time_taken):
+    def test_data(self, *, model, test_dataloader, time_taken):
         model.eval()
         model.load_state_dict(torch.load(self.params_file))
         log_probs, predictions, labels = self.make_predictions(model, test_dataloader,
@@ -179,15 +188,21 @@ class Evaluator():
         self.save_predictions(self.preds_dir, "test", predictions, labels)
         accs = self.compute_all_accuracies(
             labels, predictions, log_probs)
+        with open(self.test_acc_file, 'w') as f:
+            dictwriter = csv.DictWriter(f, fieldnames=list(accs.keys()))
+            dictwriter.writeheader()
+            dictwriter.writerow(accs)
         # print("accs from test data", accs)
-        self.write_epoch(self.test_acc_file, "test_results",
-                         labels, predictions, log_probs, time_taken)
+
+        # self.write_epoch(self.test_acc_file, "test_results",
+        #                  labels, predictions, log_probs, time_taken)
         # with open(f"{self.eval_dir}/test_predictions.csv", 'w') as f:
         #     writer = csv.writer(f)
         #     writer.writerow(accs)
 
-    def after_all(self, model, time_taken):
-        self.test_data(model, self.test_dataloader, time_taken)
+    def after_all(self, *, model, time_taken, test_dataloader):
+        self.test_data(
+            model=model, test_dataloader=test_dataloader, time_taken=time_taken)
         # any plotting functions will go here
 #
     # def save_to_s3(self, bucket):

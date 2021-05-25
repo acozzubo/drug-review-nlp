@@ -9,17 +9,22 @@ class Plotter():
     def __init__(self, results_dir):
         self.results_dir = results_dir
         self.plots_dir = f"{self.results_dir}/plots"
+
+    def setup_dir(self):
         try:
+            print("making plots dir...", self.plots_dir)
             os.mkdir(self.plots_dir)
         except FileExistsError as e:
             print(f"Directory {self.plots_dir} already exists...")
 
     def run_all(self):
+        self.setup_dir()
         self.plot_accuracy_lines()
         self.make_confusion_matrix()
         self.plot_lines(['cohens_kappa', 'accuracy'])
 
     def plot_accuracy_lines(self):
+
         # get data
 
         preds_dir = f"{self.results_dir}/preds/"
@@ -28,7 +33,6 @@ class Plotter():
         epoch_dict = {}
         max_epoch = -1
         for file in files:
-            print("file", file)
             with open(f"{preds_dir}/{file}", 'r') as f:
                 data = list(csv.reader(f))
             data = list(zip(*data))
@@ -38,7 +42,6 @@ class Plotter():
             total = {0: 0, 1: 0, 2: 0}
             for p, l in zip(data['predictions'], data['labels']):
                 total[l] += 1
-                # print("p, l", p, l)
                 if p == l:
                     correct[l] += 1
 
@@ -48,7 +51,9 @@ class Plotter():
                 'positive': correct[2] / total[2]
             }
 
-            epoch_num = int(file[6])  # files have standardized names
+            # extracts number from filename
+            epoch_num = int(file.split('_')[-1][:-4])
+            # print("epoch_number", epoch_num)
             if epoch_num > max_epoch:
                 max_epoch = epoch_num
             epoch_dict[epoch_num] = accs
@@ -58,14 +63,11 @@ class Plotter():
         for label in ('positive', 'negative', 'neutral'):
             col = [0] * (max_epoch + 1)
             for k, v in epoch_dict.items():
-                # print(k)
                 col[k] = v[label]
             data[label] = col
 
-        print("data", data)
-
         # produce chart
-        # chart = accuracy_lines(data)
+        chart = accuracy_lines(data)
 
         # save chart
         chart.save(f"{self.plots_dir}/accuracy_lines.html")
@@ -76,20 +78,42 @@ class Plotter():
         """
         # get data
         with open(f'{self.results_dir}/accuracies.csv', 'r') as f:
-            valid_data = list(csv.reader(f))
+            data = csv.reader(f)
+            header = next(data)
+            split_col = header.index('split')
+            valid_data = [[c for c in header if c != 'split']]
+            train_data = [[c for c in header if c != 'split']]
+            for row in data:
+                if row[split_col] == 'train':
+                    row = [float(c) for c in row if c != 'train']
+                    train_data.append(row)
+                elif row[split_col] == 'valid':
+                    row = [float(c) for c in row if c != 'valid']
+                    valid_data.append(row)
 
+        # train
+        train_data = list(zip(*train_data))
+        train_cols = {c[0]: list(map(float, c[1:]))
+                      for c in train_data}
+        train_inputs = {k: v for k, v in train_cols.items()
+                        if k in metrics}
+
+        # valid
         valid_data = list(zip(*valid_data))
-        # print("valid_data", valid_data)
-        valid_cols = {c[0]: list(map(float, c[1:])) for c in valid_data}
-        # print("valid_cols", valid_cols)
+        valid_cols = {c[0]: list(map(float, c[1:]))
+                      for c in valid_data}
+        valid_inputs = {k: v for k, v in valid_cols.items()
+                        if k in metrics}
 
-        inputs = {k: v for k, v in valid_cols.items()
-                  if k in metrics}
-        # print("inputs", inputs)
+        # test
+        with open(f'{self.results_dir}/test_accuracies.csv', 'r') as f:
+            data = list(csv.reader(f))
+
+        test_inputs = {h: float(c) for h, c in zip(*data) if h in metrics}
 
         # produce charts
-        chart = training_lines(valid_accuracies=inputs,
-                               title="Validation Accuracies")
+        chart = training_lines(train_accuracies=train_inputs, valid_accuracies=valid_inputs,
+                               test_accuracies=test_inputs, title="Accuracies Across Epochs")
 
         # save charts
         chart.save(f"{self.plots_dir}/training_lines.html")
@@ -101,7 +125,6 @@ class Plotter():
 
         data = list(zip(*data))
         data_cols = {c[0]: list(map(float, c[1:])) for c in data}
-        print(data_cols.keys())
         preds = data_cols['predictions']
         labels = data_cols['labels']
 
@@ -151,8 +174,6 @@ def training_lines(title="", train_accuracies={}, valid_accuracies={}, test_accu
 
     test_df = pd.DataFrame(test_cols)
 
-    # print(df['value'].dtype)
-
     min_y_axis = df['value'].min() - 0.1
 
     line_chart = alt.Chart(df).mark_line(point=True).encode(
@@ -195,7 +216,6 @@ def confusion_matrix(predicted, actual, title=""):
         text='norm',
         color=alt.value('black')
     )
-    print("about to return")
     return (heatmap + text).properties(
         width=500, height=500,
         title={'text': title})
@@ -216,9 +236,6 @@ def accuracy_lines(data, title=""):
         cols["epoch"].extend(i+1 for i in range(n))
         cols["label"].extend([label]*n)
     df = pd.DataFrame(cols)
-    # print(df)
-    # print(df['value'])
-    # print(df['value'].dtype)
 
     min_y_axis = df['accuracy'].min() - 0.1
 

@@ -7,25 +7,32 @@ import os
 
 
 class ModelContext():
-    def __init__(self, model, trainer, evaluator, plotter):
+    def __init__(self, *, model, trainer, evaluator, plotter,
+                 train_dataloader, valid_dataloader, test_dataloader):
         self.trainer = trainer
         self.evaluator = evaluator
         self.plotter = plotter
         self.model = model
+        self.train_dataloader = train_dataloader
+        self.valid_dataloader = valid_dataloader
+        self.test_dataloader = test_dataloader
 
     def run(self, num_epochs, log_interval):
         # setup
         self.evaluator.setup_dirs()
 
         # train
-        time_taken = self.trainer.train(self.model, self.evaluator,
-                                        num_epochs, log_interval)
+        time_taken = self.trainer.train(model=self.model, evaluator=self.evaluator,
+                                        num_epochs=num_epochs, log_interval=log_interval,
+                                        train_dataloader=self.train_dataloader,
+                                        valid_dataloader=self.valid_dataloader)
 
         # load best model
         self.model.load_state_dict(torch.load(self.evaluator.params_file))
 
         # eval
-        self.evaluator.after_all(self.model, time_taken)
+        self.evaluator.after_all(
+            model=self.model, time_taken=time_taken, test_dataloader=self.test_dataloader)
 
         # plots
         self.plotter.run_all()
