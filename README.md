@@ -21,26 +21,26 @@
 **Logit_colab**: This script trains three different logits using the google Colab GPU. The first logit uses the original dataset of Grasser et al. which contains duplicates, the second is the same dataset with dropped duplicates, and the third is the non-duplicated dataset containing additional, newly scraped data.
 *352 lines of code.*
 
-**Models.py**:  Our LSTM Models that rely only on text-based features.
-*352 lines of code.*
+**classes/Models.py**:  Our LSTM Models that rely only on text-based features.
+*82 lines of code.*
 
-**ModelContext.py**:  Object that holds everything required to train and evaluate model
-*352 lines of code.*
+**classes/ModelContext.py**:  Object that holds everything required to train and evaluate model
+*92 lines of code.*
 
-**Trainer.py**:  Object that trains model
-*352 lines of code.*
+**classes/Trainer.py**:  Object that trains model
+*73 lines of code.*
 
-**Evaluator.py**:  Object that executes evaluation steps during and after training and saves in appropriate directory
-*352 lines of code.*
+**classes/Evaluator.py**:  Object that executes evaluation steps during and after training and saves in appropriate directory
+*306 lines of code.*
 
-**Plotter.py**:  Object that can crawl through directory created by evaluator and create charts
-*352 lines of code.*
+**classes/Plotter.py**:  Object that can crawl through directory created by evaluator and create charts
+*285 lines of code.*
 
 **collate.py**:  The home of our collate functions used for text-based feature models
-*352 lines of code.*
+*3157 lines of code.*
 
 **create_dataloader.py**:  Dataset objects and a function that returns a DataLoader from a csv 
-*352 lines of code.*
+*213 lines of code.*
 
 **preprocessing.ipynb**:  Executes pre-processing steps and save csv that can be loaded into dataloader objects.  Also creates vocabularies and saves as json objects
 *352 lines of code.*
