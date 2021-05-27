@@ -5,7 +5,7 @@
 **Also Note:** the directory in this repository does not mirror the directory on the google drive.  The paths listed below refer to the google drive paths.
 
 ### File Descriptions
-### **2_scripts**:
+### **scripts directory:**:
 **Drugs.com_scraper/scrape.py**: This file crawls the drugs.com website letter by letter and then crawls sub letters to scrape individual drug reviews. This script was used to supplement the original dataset which included drug reviews up to January 31, 2017. 
 *170 lines of code with documentation.* 
 
