@@ -4,19 +4,19 @@
 
 ### File Descriptions
 ### **2_scripts**:
-**Drugs.com_scraper/scrape.py**: This file crawls the drugs.com website letter by letter and then crawls subletters to scrape individual drug reviews. This script was used to supplement the original dataset which included drug reviews up to January 31, 2017. 
+**Drugs.com_scraper/scrape.py**: This file crawls the drugs.com website letter by letter and then crawls sub letters to scrape individual drug reviews. This script was used to supplement the original dataset which included drug reviews up to January 31, 2017. 
 *170 lines of code with documentation.* 
 
 **embeddings/embeddings.ipynb**: This file loads the twitter drug word embedding into a weight matrix and tests that it words with a Vanilla Neural Network. 
 *204 lines of code without documentation.*
 
-**viz/results_viz.ipynb**: This file defines two visuazalitions functions using Altair. The first one is a line chart to plot training, validation, and test accuracies. The second function creates a confusion matrix for the three sentiment categories given a dataframe with columns with predicted classes and true labels to map accuracy. 
+**viz/results_viz.ipynb**: This file defines two visualizations functions using Altair. The first one is a line chart to plot training, validation, and test accuracies. The second function creates a confusion matrix for the three sentiment categories given a dataframe with columns with predicted classes and true labels to map accuracy. 
 *185 lines of code.*
 
-**Create_vocab.ipynb**: This function creates a vocabulary object using the spacy tokenizer and saves it to the data file, in order to save time in later model creation scripts.
+**Create_vocab.ipynb**: This function creates a vocabulary object using the Spacy tokenizer and saves it to the data file, in order to save time in later model creation scripts.
 *38 lines of code.*
 
-**Logit_colab**: This script trains three different logits using the google colab gpu. The first logit uses the original dataset of Grasser et al. which contains duplicates, the second is the same dataset with dropped duplicates, and the third is the non-duplicated dataset containing additional, newly scraped data.
+**Logit_colab**: This script trains three different logits using the google Colab GPU. The first logit uses the original dataset of Grasser et al. which contains duplicates, the second is the same dataset with dropped duplicates, and the third is the non-duplicated dataset containing additional, newly scraped data.
 *352 lines of code.*
 
 
