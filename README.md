@@ -46,9 +46,6 @@
 **run_LSTM_notebook.ipynb**:  Runs LSTM models by intiating a ModelContext and calling run().  Includes ability to set paramters for run
 *352 lines of code.*
 
-
-
-### **3_data**:
 **duplicate_exploration/create_datasets.ipynb**: This script creates the three different datasets to use with various models to explore the implications of duplicated datasets in the original datafile on previous research. 
 *57 lines of code.*
 
