@@ -1,5 +1,7 @@
 # Natural Language Processing on Prescription Drug Reviews
 
+## Authors: Angelo Cozzubo, Raymond Eid, Noah Selman
+
 **Note:** this repository only stores copies of our code.  The data files these codes depend on and generate are stored in a google drive and are far to large to store on git.  As such, these files will not run.  To see functional versions of these scripts, please visit https://drive.google.com/drive/folders/1WfsXz5d1XxHRl9BctP5t18iN-netd2-v?usp=sharing.  All files will be in the directory 2_scripts unless otherwise noted.
 
 **Also Note:** the directory in this repository does not mirror the directory on the google drive.  The paths listed below refer to the google drive paths.
